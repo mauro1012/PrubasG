@@ -75,7 +75,7 @@ resource "aws_lb" "alb_examen" {
 }
 
 resource "aws_lb_target_group" "tg_examen" {
-  name             = "tg-grpcv2-${substr(var.bucket_name, 0, 20)}"
+  name             = "tg-grpc-v3-${substr(var.bucket_name, 0, 20)}"
   port             = 50051
   protocol         = "HTTP"
   protocol_version = "GRPC" 
@@ -107,7 +107,7 @@ resource "aws_lb_listener" "listener_grpc" {
 
 # 5. Launch Template
 resource "aws_launch_template" "template_examen" {
-  name_prefix   = "templatev2-${var.bucket_name}"
+  name_prefix   = "template-v3-${var.bucket_name}"
   image_id      = "ami-0c7217cdde317cfec" 
   instance_type = "t2.micro"
   key_name      = var.ssh_key_name
