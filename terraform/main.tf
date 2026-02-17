@@ -29,7 +29,7 @@ data "aws_subnets" "default" {
 
 # 3. Security Group
 resource "aws_security_group" "sg_final" {
-  name_prefix = "sg-examen-"
+  name_prefix = "examenv2-${var.bucket_name}"
   description = "Permitir gRPC, SSH y RedisInsight"
 
   ingress {
