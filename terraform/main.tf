@@ -169,7 +169,7 @@ resource "aws_launch_template" "template_examen" {
   )
 }
 
-# 6. Auto Scaling Group (ASG)
+# 6. Auto Scaling Group (ASG) 
 resource "aws_autoscaling_group" "asg_examen" {
   desired_capacity    = 1
   max_size            = 2
@@ -181,6 +181,12 @@ resource "aws_autoscaling_group" "asg_examen" {
     id      = aws_launch_template.template_examen.id
     version = "$Latest"
   }
+
+  depends_on = [
+    aws_lb.alb_examen,
+    aws_lb_target_group.tg_examen,
+    aws_lb_listener.listener_grpc
+  ]
 }
 
 # 7. S3 Bucket de la aplicación
