@@ -1,24 +1,23 @@
-# 1. Usar imagen oficial de Node.js
+# 1. Usar imagen oficial
 FROM node:18
 
-# 2. Crear directorio de trabajo
+# 2. Directorio de trabajo
 WORKDIR /usr/src/app
 
-# 3. Copiar archivos de dependencias
-COPY package*.json ./
-
-# 4. Instalar dependencias
+# 3. Copiamos las dependencias ESPECIFICANDO la carpeta servidor
+# Al usar el contexto de la raíz (el . del build), debemos entrar a 'servidor'
+COPY servidor/package*.json ./
 RUN npm install
 
-# 5. Copiar el código del servidor
-COPY . .
+# 4. Copiamos el código del servidor
+COPY servidor/ .
 
-# 6. Copiar el archivo .proto (Importante: según tu imagen, está una carpeta arriba)
-# Lo copiamos desde la raíz del contexto de build que definiremos en Actions
-COPY ../proto/estudiante.proto ./proto/estudiante.proto
+# 5. Copiamos la carpeta proto (que está al mismo nivel que servidor en la raíz)
+# Esto crea la carpeta /usr/src/app/proto/ dentro del contenedor
+COPY proto/ ./proto/
 
-# 7. Exponer puerto gRPC
+# 6. Exponer puerto gRPC
 EXPOSE 50051
 
-# 8. Comando para iniciar
+# 7. Iniciar el servidor
 CMD [ "node", "index.js" ]
