@@ -16,10 +16,16 @@ const client = redis.createClient({ url: `redis://${REDIS_HOST}:${REDIS_PORT}` }
 client.on('error', (err) => console.log('Error en Redis:', err));
 client.on('connect', () => console.log('Conectado a Redis (Caché)'));
 
-(async () => { await client.connect(); })();
+(async () => { 
+    try {
+        await client.connect(); 
+    } catch (err) {
+        console.error("No se pudo conectar a Redis:", err);
+    }
+})();
 
-// 2. Cargar .proto
-const packageDefinition = protoLoader.loadSync('../proto/estudiante.proto', {
+// 2. Cargar .proto (RUTA CORREGIDA PARA DOCKER)
+const packageDefinition = protoLoader.loadSync('./proto/estudiante.proto', {
     keepCase: true, longs: String, enums: String, defaults: true, oneofs: true
 });
 const proto = grpc.loadPackageDefinition(packageDefinition);
@@ -35,14 +41,14 @@ server.addService(proto.EstudianteService.service, {
             await client.set(id, JSON.stringify({ nombre, carrera, fecha: new Date() }));
             console.log(`[gRPC] Estudiante "${nombre}" guardado en Redis.`);
 
-            // B. Guardar Log en S3 (Demostración para el profesor)
+            // B. Guardar Log en S3
             if (BUCKET_NAME) {
                 await s3.send(new PutObjectCommand({
                     Bucket: BUCKET_NAME,
                     Key: `logs-estudiantes/log-${id}.txt`,
                     Body: `Registro: Estudiante ${nombre} de la carrera ${carrera} procesado con éxito.`
                 }));
-                console.log(`[S3] Log de estudiante ${id} subido al bucket.`);
+                console.log(`[S3] Log de estudiante ${id} subido al bucket ${BUCKET_NAME}.`);
             }
 
             callback(null, { 
