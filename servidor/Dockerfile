@@ -1,23 +1,25 @@
-# 1. Usar imagen oficial
-FROM node:18
+# 1. Usar imagen oficial de Node.js
+FROM node:18-slim
 
 # 2. Directorio de trabajo
 WORKDIR /usr/src/app
 
-# 3. Copiamos las dependencias ESPECIFICANDO la carpeta servidor
-# Al usar el contexto de la raíz (el . del build), debemos entrar a 'servidor'
+# 3. Copiamos archivos de dependencias
 COPY servidor/package*.json ./
-RUN npm install
 
-# 4. Copiamos el código del servidor
+# 4. INSTALACIÓN DE SEGURIDAD (Aquí resolvemos tu error)
+# Instalamos TODO lo que tu código necesita para que no vuelva a fallar por "Module Not Found"
+RUN npm install
+RUN npm install dotenv @grpc/grpc-js @grpc/proto-loader @aws-sdk/client-s3 redis
+
+# 5. Copiamos el código del servidor
 COPY servidor/ .
 
-# 5. Copiamos la carpeta proto (que está al mismo nivel que servidor en la raíz)
-# Esto crea la carpeta /usr/src/app/proto/ dentro del contenedor
+# 6. Copiamos la carpeta proto
 COPY proto/ ./proto/
 
-# 6. Exponer puerto gRPC
+# 7. Puerto gRPC
 EXPOSE 50051
 
-# 7. Iniciar el servidor
+# 8. Iniciar servidor
 CMD [ "node", "index.js" ]
