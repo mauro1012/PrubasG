@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+service EstudianteService {
+  // Define una función que recibe un Estudiante y devuelve un Resultado
+  rpc EnviarEstudiante (Estudiante) returns (Resultado) {}
+}
+
+message Estudiante {
+  string id = 1;
+  string nombre = 2;
+  string carrera = 3;
+}
+
+message Resultado {
+  string mensaje = 1;
+  bool exito = 2;
+}

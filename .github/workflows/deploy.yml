@@ -1,0 +1,47 @@
+name: Deploy gRPC AWS Academy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Server
+        run: |
+          docker build -t ${{ secrets.DOCKER_USER }}/servidor-grpc:latest ./servidor
+          docker push ${{ secrets.DOCKER_USER }}/servidor-grpc:latest
+
+  terraform-deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init and Apply
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }} 
+        run: |
+          cd terraform
+          # Creamos un archivo tfvars temporal con los secretos de Docker para el main.tf
+          echo "docker_user = \"${{ secrets.DOCKER_USER }}\"" > terraform.tfvars
+          echo "docker_password = \"${{ secrets.DOCKER_PASSWORD }}\"" >> terraform.tfvars
+          echo "ssh_key_name = \"vockey\"" >> terraform.tfvars # AWS Academy suele usar 'vockey'
+          echo "bucket_name = \"examen-suple-${{ secrets.DOCKER_USER }}\"" >> terraform.tfvars
+          
+          terraform init
+          terraform apply -auto-approve

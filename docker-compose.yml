@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # Base de Datos Redis (Caché)
+  cache-db:
+    image: redis:latest
+    container_name: redis-examen
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # Tu Microservicio gRPC (¡ESTO FALTABA!)
+  grpc-server:
+    image: ${DOCKER_USER}/servidor-grpc:latest # Se llenará con la variable de Actions
+    container_name: servidor-grpc-examen
+    ports:
+      - "50051:50051"
+    env_file: 
+      - ./servidor/.env # Ruta donde Terraform crea el .env
+    depends_on:
+      - cache-db
+    restart: always
+
+  # Interfaz visual (Opcional para lucirte)
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: redis-insight-examen
+    ports:
+      - "8001:8001"
+    depends_on:
+      - cache-db

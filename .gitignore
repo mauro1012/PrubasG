@@ -1,0 +1,24 @@
+# --- Terraform ---
+# Ignorar archivos de variables locales con credenciales
+*.tfvars
+*.tfvars.json
+
+# Ignorar archivos de estado local (si no usas backend remoto o para pruebas)
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# --- Node.js (Servidor y Cliente) ---
+node_modules/
+npm-debug.log
+yarn-error.log
+.env
+
+# --- Docker ---
+# En caso de que generes archivos temporales de docker
+.docker/
+
+# --- Sistema Operativo ---
+.DS_Store
+Thumbs.db
