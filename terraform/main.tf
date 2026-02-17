@@ -71,7 +71,7 @@ resource "aws_lb" "alb_examen" {
 }
 
 resource "aws_lb_target_group" "tg_examen" {
-  name             = "tg-grpc-${substr(var.bucket_name, 0, 20)}"
+  name             = "tg-grpcv2-${substr(var.bucket_name, 0, 20)}"
   port             = 50051
   protocol         = "HTTP"
   protocol_version = "GRPC" # CAMBIO CLAVE: Cambiado de HTTP1 a GRPC
