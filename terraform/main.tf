@@ -8,7 +8,7 @@ provider "aws" {
   region = "us-east-1" 
 }
 
-# 1. Backend para el Status (Coméntalo si el bucket no existe previamente)
+# 1. Backend para el Status (Asegúrate de que el bucket exista o comenta este bloque)
 terraform {
   backend "s3" {
     bucket  = "examen-suple-grpc-2026" 
@@ -61,7 +61,7 @@ resource "aws_security_group" "sg_final" {
   }
 }
 
-# 4. Load Balancer (ALB) y Target Group - CORREGIDO PARA PROTOCOLO
+# 4. Load Balancer (ALB) y Target Group - CONFIGURACIÓN DE COMPATIBILIDAD
 resource "aws_lb" "alb_examen" {
   name               = "alb-${substr(var.bucket_name, 0, 20)}"
   internal           = false
@@ -74,14 +74,19 @@ resource "aws_lb_target_group" "tg_examen" {
   name             = "tg-grpc-${substr(var.bucket_name, 0, 20)}"
   port             = 50051
   protocol         = "HTTP"
-  # Cambiado a HTTP1 para evitar el error de Listener con GRPC sin SSL
-  protocol_version = "HTTP1" 
+  protocol_version = "HTTP1" # Necesario para evitar error de Listener HTTP
   vpc_id           = data.aws_vpc.default.id
   
   health_check {
-    port     = "50051"
-    protocol = "HTTP"
-    matcher  = "0-99" # Acepta respuestas gRPC como exitosas
+    enabled             = true
+    port                = "50051"
+    protocol            = "HTTP"
+    path                = "/"
+    matcher             = "200-399" # Rango compatible con HTTP1
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
   }
 }
 
@@ -96,10 +101,10 @@ resource "aws_lb_listener" "listener_grpc" {
   }
 }
 
-# 5. Launch Template con AMI corregida
+# 5. Launch Template (Ubuntu 22.04 + Docker Compose)
 resource "aws_launch_template" "template_examen" {
   name_prefix   = "template-${var.bucket_name}"
-  image_id      = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS Oficial
+  image_id      = "ami-0c7217cdde317cfec" # AMI Oficial Ubuntu 22.04 LTS
   instance_type = "t2.micro"
   key_name      = var.ssh_key_name
 
@@ -115,11 +120,13 @@ resource "aws_launch_template" "template_examen" {
               sudo systemctl start docker
               sudo systemctl enable docker
 
+              # Login en Docker Hub
               echo "${var.docker_password}" | sudo docker login -u "${var.docker_user}" --password-stdin
 
               mkdir -p /home/ubuntu/app/servidor
               cd /home/ubuntu/app
 
+              # Crear archivo .env dinámico
               cat <<EOT > servidor/.env
               PORT=50051
               REDIS_HOST=cache-db
@@ -127,6 +134,7 @@ resource "aws_launch_template" "template_examen" {
               BUCKET_NAME=${var.bucket_name}
               EOT
 
+              # Crear docker-compose.yml completo
               cat <<EOT > docker-compose.yml
               version: '3.8'
               services:
@@ -175,7 +183,7 @@ resource "aws_autoscaling_group" "asg_examen" {
   }
 }
 
-# 7. S3 Bucket
+# 7. S3 Bucket de la aplicación
 resource "aws_s3_bucket" "bucket_examen" {
   bucket        = var.bucket_name
   force_destroy = true
@@ -189,5 +197,5 @@ resource "aws_s3_object" "folder_logs" {
 # 8. Outputs
 output "url_servidor_grpc" {
   value       = aws_lb.alb_examen.dns_name
-  description = "DNS del ALB para configurar en el cliente"
+  description = "DNS del ALB para el cliente gRPC"
 }
