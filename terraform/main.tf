@@ -29,7 +29,7 @@ data "aws_subnets" "default" {
 
 # 3. Security Group
 resource "aws_security_group" "sg_final" {
-  name        = "sg_${var.bucket_name}"
+  name        = "sgv2_${var.bucket_name}"
   description = "Permitir gRPC, SSH y RedisInsight"
 
   ingress {
@@ -63,7 +63,7 @@ resource "aws_security_group" "sg_final" {
 
 # 4. Load Balancer (ALB) y Target Group - CONFIGURACIÓN gRPC NATIVA
 resource "aws_lb" "alb_examen" {
-  name               = "alb-${substr(var.bucket_name, 0, 20)}"
+  name               = "albv2-${substr(var.bucket_name, 0, 20)}"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.sg_final.id]
@@ -103,10 +103,18 @@ resource "aws_lb_listener" "listener_grpc" {
 
 # 5. Launch Template
 resource "aws_launch_template" "template_examen" {
-  name_prefix   = "template-${var.bucket_name}"
+  name_prefix   = "templatev2-${var.bucket_name}"
   image_id      = "ami-0c7217cdde317cfec" 
   instance_type = "t2.micro"
   key_name      = var.ssh_key_name
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "Instancia-gRPC-${var.bucket_name}" # El nombre que verás en la consola
+      Proyecto = "Examen-Supletorio"
+    }
+  }
 
   network_interfaces {
     associate_public_ip_address = true
