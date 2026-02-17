@@ -8,7 +8,7 @@ provider "aws" {
   region = "us-east-1" 
 }
 
-# 1. Backend para el Status (Asegúrate de que el bucket exista o comenta este bloque)
+# 1. Backend para el Status
 terraform {
   backend "s3" {
     bucket  = "examen-suple-grpc-2026" 
@@ -27,7 +27,7 @@ data "aws_subnets" "default" {
   }
 }
 
-# 3. Security Group (Puertos: 50051 gRPC, 22 SSH, 8001 RedisInsight)
+# 3. Security Group
 resource "aws_security_group" "sg_final" {
   name        = "sg_${var.bucket_name}"
   description = "Permitir gRPC, SSH y RedisInsight"
@@ -61,7 +61,7 @@ resource "aws_security_group" "sg_final" {
   }
 }
 
-# 4. Load Balancer (ALB) y Target Group - CONFIGURACIÓN DE COMPATIBILIDAD
+# 4. Load Balancer (ALB) y Target Group - CONFIGURACIÓN gRPC NATIVA
 resource "aws_lb" "alb_examen" {
   name               = "alb-${substr(var.bucket_name, 0, 20)}"
   internal           = false
@@ -74,15 +74,15 @@ resource "aws_lb_target_group" "tg_examen" {
   name             = "tg-grpc-${substr(var.bucket_name, 0, 20)}"
   port             = 50051
   protocol         = "HTTP"
-  protocol_version = "HTTP1" # Necesario para evitar error de Listener HTTP
+  protocol_version = "GRPC" # CAMBIO CLAVE: Cambiado de HTTP1 a GRPC
   vpc_id           = data.aws_vpc.default.id
   
   health_check {
     enabled             = true
     port                = "50051"
     protocol            = "HTTP"
-    path                = "/"
-    matcher             = "200-399" # Rango compatible con HTTP1
+    path                = "/" # En gRPC esto es ignorado pero requerido por AWS
+    matcher             = "12" # CAMBIO CLAVE: Código 12 significa 'Unimplemented' pero indica que el servicio responde
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
@@ -93,7 +93,7 @@ resource "aws_lb_target_group" "tg_examen" {
 resource "aws_lb_listener" "listener_grpc" {
   load_balancer_arn = aws_lb.alb_examen.arn
   port              = "50051"
-  protocol          = "HTTP"
+  protocol          = "HTTP" # El listener recibe HTTP/2 (gRPC) en este puerto
 
   default_action {
     type             = "forward"
@@ -101,10 +101,10 @@ resource "aws_lb_listener" "listener_grpc" {
   }
 }
 
-# 5. Launch Template (Ubuntu 22.04 + Docker Compose)
+# 5. Launch Template
 resource "aws_launch_template" "template_examen" {
   name_prefix   = "template-${var.bucket_name}"
-  image_id      = "ami-0c7217cdde317cfec" # AMI Oficial Ubuntu 22.04 LTS
+  image_id      = "ami-0c7217cdde317cfec" 
   instance_type = "t2.micro"
   key_name      = var.ssh_key_name
 
@@ -120,13 +120,11 @@ resource "aws_launch_template" "template_examen" {
               sudo systemctl start docker
               sudo systemctl enable docker
 
-              # Login en Docker Hub
               echo "${var.docker_password}" | sudo docker login -u "${var.docker_user}" --password-stdin
 
               mkdir -p /home/ubuntu/app/servidor
               cd /home/ubuntu/app
 
-              # Crear archivo .env dinámico
               cat <<EOT > servidor/.env
               PORT=50051
               REDIS_HOST=cache-db
@@ -134,7 +132,6 @@ resource "aws_launch_template" "template_examen" {
               BUCKET_NAME=${var.bucket_name}
               EOT
 
-              # Crear docker-compose.yml completo
               cat <<EOT > docker-compose.yml
               version: '3.8'
               services:
@@ -144,7 +141,6 @@ resource "aws_launch_template" "template_examen" {
                   ports:
                     - "6379:6379"
                   restart: always
-
                 grpc-server:
                   image: ${var.docker_user}/servidor-grpc:latest
                   container_name: servidor-grpc-examen
@@ -154,7 +150,6 @@ resource "aws_launch_template" "template_examen" {
                   depends_on:
                     - cache-db
                   restart: always
-
                 redis-insight:
                   image: redislabs/redisinsight:latest
                   container_name: redis-insight-examen
@@ -169,7 +164,7 @@ resource "aws_launch_template" "template_examen" {
   )
 }
 
-# 6. Auto Scaling Group (ASG) 
+# 6. Auto Scaling Group
 resource "aws_autoscaling_group" "asg_examen" {
   desired_capacity    = 1
   max_size            = 2
@@ -189,7 +184,7 @@ resource "aws_autoscaling_group" "asg_examen" {
   ]
 }
 
-# 7. S3 Bucket de la aplicación
+# 7. S3 Bucket
 resource "aws_s3_bucket" "bucket_examen" {
   bucket        = var.bucket_name
   force_destroy = true
@@ -202,6 +197,5 @@ resource "aws_s3_object" "folder_logs" {
 
 # 8. Outputs
 output "url_servidor_grpc" {
-  value       = aws_lb.alb_examen.dns_name
-  description = "DNS del ALB para el cliente gRPC"
+  value = aws_lb.alb_examen.dns_name
 }
