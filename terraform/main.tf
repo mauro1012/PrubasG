@@ -61,7 +61,7 @@ resource "aws_security_group" "sg_final" {
   }
 }
 
-# 4. Load Balancer (ALB) y Target Group (RESTABLECIDOS)
+# 4. Load Balancer (ALB) y Target Group - CORREGIDO
 resource "aws_lb" "alb_examen" {
   name               = "alb-${var.bucket_name}"
   internal           = false
@@ -73,7 +73,7 @@ resource "aws_lb" "alb_examen" {
 resource "aws_lb_target_group" "tg_examen" {
   name             = "tg-grpc-${substr(var.bucket_name, 0, 20)}"
   port             = 50051
-  protocol         = "HTTP"
+  protocol         = "HTTP" # Cambiado a HTTP para compatibilidad con el Listener
   protocol_version = "GRPC"
   vpc_id           = data.aws_vpc.default.id
   
@@ -95,10 +95,10 @@ resource "aws_lb_listener" "listener_grpc" {
   }
 }
 
-# 5. Launch Template (Optimizado para Docker Compose)
+# 5. Launch Template - CORREGIDO
 resource "aws_launch_template" "template_examen" {
   name_prefix   = "template-${var.bucket_name}"
-  image_id      = "ami-0e2c8ccd9e036d13a" 
+  image_id      = "ami-0c7217cdde317cfec" # AMI Ubuntu 22.04 oficial us-east-1
   instance_type = "t2.micro"
   key_name      = var.ssh_key_name
 
