@@ -29,8 +29,8 @@ data "aws_subnets" "default" {
 
 # 3. Security Group
 resource "aws_security_group" "sg_final" {
-  # Nombre corregido: No puede empezar con "sg-"
-  name_prefix = "final-v9-${var.bucket_name}"
+  # Nombre nuevo para evitar conflictos con los v9 anteriores
+  name_prefix = "final-v10-sg-" 
   description = "Permitir gRPC, SSH y RedisInsight"
 
   ingress {
@@ -68,8 +68,8 @@ resource "aws_security_group" "sg_final" {
 
 # 4. Load Balancer (ALB) y Target Group
 resource "aws_lb" "alb_examen" {
-  # Nombre v9 para evitar conflictos
-  name               = "alb-v9-${substr(var.bucket_name, 0, 15)}"
+  # Nombre v10 para una creación totalmente limpia
+  name               = "alb-v10-${substr(var.bucket_name, 0, 15)}"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.sg_final.id]
@@ -77,10 +77,9 @@ resource "aws_lb" "alb_examen" {
 }
 
 resource "aws_lb_target_group" "tg_examen" {
-  name             = "tg-v9-${substr(var.bucket_name, 0, 15)}"
+  name             = "tg-v10-${substr(var.bucket_name, 0, 15)}"
   port             = 50051
   protocol         = "HTTP"
-  # HTTP1 es necesario para que el Listener HTTP sea aceptado por AWS
   protocol_version = "HTTP1" 
   vpc_id           = data.aws_vpc.default.id
   
@@ -89,7 +88,6 @@ resource "aws_lb_target_group" "tg_examen" {
     port                = "50051"
     protocol            = "HTTP"
     path                = "/" 
-    # Matcher 200-499 para que cualquier respuesta gRPC cuente como 'Sana'
     matcher             = "200-499" 
     interval            = 30
     timeout             = 5
@@ -115,7 +113,7 @@ resource "aws_lb_listener" "listener_grpc" {
 
 # 5. Launch Template
 resource "aws_launch_template" "template_examen" {
-  name_prefix   = "temp-v9-${var.bucket_name}"
+  name_prefix   = "temp-v10-${var.bucket_name}"
   image_id      = "ami-0c7217cdde317cfec" 
   instance_type = "t2.micro"
   key_name      = var.ssh_key_name
@@ -123,7 +121,7 @@ resource "aws_launch_template" "template_examen" {
   tag_specifications {
     resource_type = "instance"
     tags = {
-      Name     = "Instancia-gRPC-${var.bucket_name}"
+      Name     = "Instancia-gRPC-v10"
       Proyecto = "Examen-Supletorio"
     }
   }
@@ -186,6 +184,8 @@ resource "aws_launch_template" "template_examen" {
 
 # 6. Auto Scaling Group
 resource "aws_autoscaling_group" "asg_examen" {
+  # Nombre explícito para que no use el ID generado automáticamente
+  name                = "asg-v10-${var.bucket_name}"
   desired_capacity    = 1
   max_size            = 2
   min_size            = 1
@@ -199,7 +199,7 @@ resource "aws_autoscaling_group" "asg_examen" {
 
   tag {
     key                 = "Name"
-    value               = "EC2-gRPC-${var.bucket_name}"
+    value               = "EC2-gRPC-v10"
     propagate_at_launch = true
   }
 
