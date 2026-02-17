@@ -1,0 +1,38 @@
+en cada carpeta de servidor y cliente, ejecutar el siguiente comando
+para instalar las dependencias:
+
+ npm install
+
+ luego en la carpeta servidor:
+  Inicializar proyecto
+    npm init -y
+
+ Instalar dependencias del servidor
+   npm install @grpc/grpc-js @grpc/proto-loader redis @aws-sdk/client-s3 dotenv
+
+luego en la carpeta del cliente:
+  Inicializar proyecto
+    npm init -y 
+
+Instalar dependencias del cliente
+    npm install @grpc/grpc-js @grpc/proto-loader dotenv
+
+ luego, en la carpeta del servidor, ejecutar el siguiente comando para crear un archivo .env  
+ para ejecutar el cliente el servidor, ejecutar el siguiente comando en cada carpeta:   
+ ** node index.js ** 4
+
+cambiar las crednenciales en el .en de servidor con las credenciales de aws,
+y luego ejecutar el cliente y el servidor para que se conecten a redis y a s3
+
+** verificacion final 
+dentro de la ec2 
+sudo docker exec redis-examen redis-cli keys "*"
+
+** para ver la informadion del s3 
+intalar primero el cliente en la intiacia,
+luego colocar las credenciales de la seccion
+y luego colocar este comando 
+AWS_ACCESS_KEY_ID="tu_key" AWS_SECRET_ACCESS_KEY="tu_secret" AWS_SESSION_TOKEN="tu_token" aws s3 ls s3://examen-suple-mauro28102023/logs-estudiantes/ --region us-east-1
+
+
+

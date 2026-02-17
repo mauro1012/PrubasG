@@ -6,7 +6,6 @@ const path = require('path');
 const SERVER_IP = process.env.SERVER_IP || 'localhost';
 const SERVER_PORT = process.env.SERVER_PORT || '50051';
 
-
 const PROTO_PATH = path.join(__dirname, '../proto/estudiante.proto');
 
 try {
@@ -22,22 +21,26 @@ try {
     );
 
     const nuevoEstudiante = {
-        id: "1725634122", 
-        nombre: "Richar Mauricio",
-        carrera: "Sistemas"
+        id: "1750001012", 
+        nombre: "Mauricio Correa",
+        carrera: "Ingenieria en Sistemas"
     };
 
-    console.log(`Conectando al servidor gRPC en ${SERVER_IP}:${SERVER_PORT}...`);
+    console.log(`Iniciando solicitud gRPC hacia ${SERVER_IP}:${SERVER_PORT}...`);
 
     client.EnviarEstudiante(nuevoEstudiante, (error, response) => {
         if (!error) {
-            console.log(" Éxito:", response.mensaje);
+            console.log("--------------------------------------------------");
+            console.log("Respuesta del Servidor:");
+            console.log(response.mensaje);
+            console.log("Estado: Operacion completada satisfactoriamente.");
+            console.log("--------------------------------------------------");
         } else {
-            console.error(" Error gRPC:", error.message);
-            console.log("Tip: Revisa que el ALB esté en estado 'Healthy' en la consola de AWS.");
+            console.error("Fallo en la comunicacion gRPC:", error.message);
+            console.log("Referencia: Verifique la conectividad del ALB o la IP de la instancia.");
         }
     });
 
 } catch (e) {
-    console.error(" Error cargando el archivo .proto:", e.message);
+    console.error("Error crítico en la carga de la definicion de servicio:", e.message);
 }

@@ -24,7 +24,7 @@ client.on('connect', () => console.log('Conectado a Redis (Caché)'));
     }
 })();
 
-// 2. Cargar .proto (RUTA CORREGIDA PARA DOCKER)
+// 2. Cargar .proto
 const packageDefinition = protoLoader.loadSync('./proto/estudiante.proto', {
     keepCase: true, longs: String, enums: String, defaults: true, oneofs: true
 });
@@ -39,27 +39,28 @@ server.addService(proto.EstudianteService.service, {
             
             // A. Guardar en Redis
             await client.set(id, JSON.stringify({ nombre, carrera, fecha: new Date() }));
-            console.log(`[gRPC] Estudiante "${nombre}" guardado en Redis.`);
+            console.log(`[gRPC] Registro local completado: Estudiante ${nombre}`);
 
             // B. Guardar Log en S3
             if (BUCKET_NAME) {
                 await s3.send(new PutObjectCommand({
                     Bucket: BUCKET_NAME,
                     Key: `logs-estudiantes/log-${id}.txt`,
-                    Body: `Registro: Estudiante ${nombre} de la carrera ${carrera} procesado con éxito.`
+                    Body: `Registro: Estudiante ${nombre} con ID ${id} de la carrera ${carrera} procesado exitosamente.`
                 }));
-                console.log(`[S3] Log de estudiante ${id} subido al bucket ${BUCKET_NAME}.`);
+                console.log(`[S3] Persistencia en S3 confirmada para ID: ${id}`);
             }
 
+            // Respuesta profesional al cliente
             callback(null, { 
-                mensaje: `Estudiante ${nombre} procesado en Redis y S3.`, 
+                mensaje: `Confirmacion: El estudiante ${nombre} con ID ${id} de la carrera ${carrera} ha sido procesado en Redis y S3.`, 
                 exito: true 
             });
         } catch (error) {
-            console.error('Error en el procesamiento:', error);
+            console.error('Excepcion en el procesamiento:', error);
             callback({
                 code: grpc.status.INTERNAL,
-                details: "Error interno del servidor"
+                details: "Error interno en el procesamiento del servidor gRPC"
             });
         }
     }
@@ -68,8 +69,8 @@ server.addService(proto.EstudianteService.service, {
 // 4. Iniciar servidor
 server.bindAsync(`0.0.0.0:${GRPC_PORT}`, grpc.ServerCredentials.createInsecure(), (error, port) => {
     if (error) {
-        console.error(`Error al iniciar: ${error.message}`);
+        console.error(`Fallo en el enlace del puerto: ${error.message}`);
         return;
     }
-    console.log(`Servidor gRPC corriendo en puerto ${GRPC_PORT}`);
+    console.log(`Servidor gRPC activo en el puerto ${GRPC_PORT}`);
 });
