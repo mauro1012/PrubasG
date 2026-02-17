@@ -8,7 +8,7 @@ provider "aws" {
   region = "us-east-1" 
 }
 
-# 1. Backend para el Status (Asegúrate que el bucket exista antes o coméntalo)
+# 1. Backend para el Status (Coméntalo si el bucket no existe previamente)
 terraform {
   backend "s3" {
     bucket  = "examen-suple-grpc-2026" 
@@ -61,9 +61,9 @@ resource "aws_security_group" "sg_final" {
   }
 }
 
-# 4. Load Balancer (ALB) y Target Group - CORREGIDO
+# 4. Load Balancer (ALB) y Target Group - CORREGIDO PARA PROTOCOLO
 resource "aws_lb" "alb_examen" {
-  name               = "alb-${var.bucket_name}"
+  name               = "alb-${substr(var.bucket_name, 0, 20)}"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.sg_final.id]
@@ -73,14 +73,15 @@ resource "aws_lb" "alb_examen" {
 resource "aws_lb_target_group" "tg_examen" {
   name             = "tg-grpc-${substr(var.bucket_name, 0, 20)}"
   port             = 50051
-  protocol         = "HTTP" # Cambiado a HTTP para compatibilidad con el Listener
-  protocol_version = "GRPC"
+  protocol         = "HTTP"
+  # Cambiado a HTTP1 para evitar el error de Listener con GRPC sin SSL
+  protocol_version = "HTTP1" 
   vpc_id           = data.aws_vpc.default.id
   
   health_check {
     port     = "50051"
     protocol = "HTTP"
-    matcher  = "0-99"
+    matcher  = "0-99" # Acepta respuestas gRPC como exitosas
   }
 }
 
@@ -95,10 +96,10 @@ resource "aws_lb_listener" "listener_grpc" {
   }
 }
 
-# 5. Launch Template - CORREGIDO
+# 5. Launch Template con AMI corregida
 resource "aws_launch_template" "template_examen" {
   name_prefix   = "template-${var.bucket_name}"
-  image_id      = "ami-0c7217cdde317cfec" # AMI Ubuntu 22.04 oficial us-east-1
+  image_id      = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS Oficial
   instance_type = "t2.micro"
   key_name      = var.ssh_key_name
 
@@ -114,13 +115,11 @@ resource "aws_launch_template" "template_examen" {
               sudo systemctl start docker
               sudo systemctl enable docker
 
-              # Login en Docker Hub
               echo "${var.docker_password}" | sudo docker login -u "${var.docker_user}" --password-stdin
 
               mkdir -p /home/ubuntu/app/servidor
               cd /home/ubuntu/app
 
-              # Crear archivo .env
               cat <<EOT > servidor/.env
               PORT=50051
               REDIS_HOST=cache-db
@@ -128,7 +127,6 @@ resource "aws_launch_template" "template_examen" {
               BUCKET_NAME=${var.bucket_name}
               EOT
 
-              # Crear docker-compose.yml
               cat <<EOT > docker-compose.yml
               version: '3.8'
               services:
@@ -191,5 +189,5 @@ resource "aws_s3_object" "folder_logs" {
 # 8. Outputs
 output "url_servidor_grpc" {
   value       = aws_lb.alb_examen.dns_name
-  description = "DNS del Load Balancer para el cliente"
+  description = "DNS del ALB para configurar en el cliente"
 }
