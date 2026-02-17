@@ -8,7 +8,7 @@ provider "aws" {
   region = "us-east-1" 
 }
 
-# 1. Backend para el Status (Asegúrate que el bucket exista antes)
+# 1. Backend para el Status (Asegúrate que el bucket exista antes o coméntalo)
 terraform {
   backend "s3" {
     bucket  = "examen-suple-grpc-2026" 
@@ -27,7 +27,7 @@ data "aws_subnets" "default" {
   }
 }
 
-# 3. Security Group (Añadido puerto 8001 para Redis Insight)
+# 3. Security Group (Puertos: 50051 gRPC, 22 SSH, 8001 RedisInsight)
 resource "aws_security_group" "sg_final" {
   name        = "sg_${var.bucket_name}"
   description = "Permitir gRPC, SSH y RedisInsight"
@@ -46,7 +46,6 @@ resource "aws_security_group" "sg_final" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Para que puedas entrar a la interfaz de Redis Insight
   ingress {
     from_port   = 8001
     to_port     = 8001
@@ -62,9 +61,41 @@ resource "aws_security_group" "sg_final" {
   }
 }
 
-# ... (Bloques 4 de ALB y Listener se mantienen igual que tu código) ...
+# 4. Load Balancer (ALB) y Target Group (RESTABLECIDOS)
+resource "aws_lb" "alb_examen" {
+  name               = "alb-${var.bucket_name}"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.sg_final.id]
+  subnets            = data.aws_subnets.default.ids
+}
 
-# 5. Launch Template (Ajustado para el nuevo Docker Compose)
+resource "aws_lb_target_group" "tg_examen" {
+  name             = "tg-grpc-${substr(var.bucket_name, 0, 20)}"
+  port             = 50051
+  protocol         = "HTTP"
+  protocol_version = "GRPC"
+  vpc_id           = data.aws_vpc.default.id
+  
+  health_check {
+    port     = "50051"
+    protocol = "HTTP"
+    matcher  = "0-99"
+  }
+}
+
+resource "aws_lb_listener" "listener_grpc" {
+  load_balancer_arn = aws_lb.alb_examen.arn
+  port              = "50051"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.tg_examen.arn
+  }
+}
+
+# 5. Launch Template (Optimizado para Docker Compose)
 resource "aws_launch_template" "template_examen" {
   name_prefix   = "template-${var.bucket_name}"
   image_id      = "ami-0e2c8ccd9e036d13a" 
@@ -83,13 +114,13 @@ resource "aws_launch_template" "template_examen" {
               sudo systemctl start docker
               sudo systemctl enable docker
 
-              # Login en Docker
+              # Login en Docker Hub
               echo "${var.docker_password}" | sudo docker login -u "${var.docker_user}" --password-stdin
 
               mkdir -p /home/ubuntu/app/servidor
               cd /home/ubuntu/app
 
-              # Crear el .env del servidor (REDIS_HOST ahora es el nombre del servicio en el compose)
+              # Crear archivo .env
               cat <<EOT > servidor/.env
               PORT=50051
               REDIS_HOST=cache-db
@@ -97,7 +128,7 @@ resource "aws_launch_template" "template_examen" {
               BUCKET_NAME=${var.bucket_name}
               EOT
 
-              # Crear el docker-compose.yml EXACTAMENTE como el tuyo pero con el server
+              # Crear docker-compose.yml
               cat <<EOT > docker-compose.yml
               version: '3.8'
               services:
@@ -148,7 +179,7 @@ resource "aws_autoscaling_group" "asg_examen" {
 
 # 7. S3 Bucket
 resource "aws_s3_bucket" "bucket_examen" {
-  bucket        = var.bucket_name # Usa la variable definida en .tfvars
+  bucket        = var.bucket_name
   force_destroy = true
 }
 
@@ -160,5 +191,5 @@ resource "aws_s3_object" "folder_logs" {
 # 8. Outputs
 output "url_servidor_grpc" {
   value       = aws_lb.alb_examen.dns_name
-  description = "DNS del Load Balancer"
+  description = "DNS del Load Balancer para el cliente"
 }
