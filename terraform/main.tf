@@ -8,7 +8,7 @@ provider "aws" {
   region = "us-east-1" 
 }
 
-# 1. Backend para el Status
+# 1. Backend para el Status (Asegúrate de que este bucket exista)
 terraform {
   backend "s3" {
     bucket  = "examen-suple-grpc-2026" 
@@ -29,8 +29,8 @@ data "aws_subnets" "default" {
 
 # 3. Security Group
 resource "aws_security_group" "sg_final" {
-  # Nombre corregido: No empieza con "sg-"
-  name_prefix = "final-v2-${var.bucket_name}"
+  # IMPORTANTE: No puede empezar con "sg-"
+  name_prefix = "final-v8-${var.bucket_name}"
   description = "Permitir gRPC, SSH y RedisInsight"
 
   ingress {
@@ -68,8 +68,7 @@ resource "aws_security_group" "sg_final" {
 
 # 4. Load Balancer (ALB) y Target Group
 resource "aws_lb" "alb_examen" {
-  # Nombre nuevo para evitar conflictos de recursos existentes
-  name               = "alb-f7-${substr(var.bucket_name, 0, 15)}"
+  name               = "alb-f8-${substr(var.bucket_name, 0, 15)}"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.sg_final.id]
@@ -77,10 +76,10 @@ resource "aws_lb" "alb_examen" {
 }
 
 resource "aws_lb_target_group" "tg_examen" {
-  name             = "tg-grpc-v7-${substr(var.bucket_name, 0, 15)}"
+  name             = "tg-grpc-v8-${substr(var.bucket_name, 0, 15)}"
   port             = 50051
   protocol         = "HTTP"
-  # CAMBIO CLAVE: HTTP2 permite gRPC sobre un Listener HTTP sin SSL
+  # HTTP2 es el puente para usar gRPC sin certificados SSL en el ALB
   protocol_version = "HTTP2" 
   vpc_id           = data.aws_vpc.default.id
   
@@ -89,7 +88,8 @@ resource "aws_lb_target_group" "tg_examen" {
     port                = "50051"
     protocol            = "HTTP"
     path                = "/" 
-    matcher             = "12" 
+    # Matcher corregido: 200-499 es aceptado por el validador de AWS para HTTP2
+    matcher             = "200-499" 
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
@@ -114,7 +114,7 @@ resource "aws_lb_listener" "listener_grpc" {
 
 # 5. Launch Template
 resource "aws_launch_template" "template_examen" {
-  name_prefix   = "temp-v7-${var.bucket_name}"
+  name_prefix   = "temp-v8-${var.bucket_name}"
   image_id      = "ami-0c7217cdde317cfec" 
   instance_type = "t2.micro"
   key_name      = var.ssh_key_name
