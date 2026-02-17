@@ -29,7 +29,7 @@ data "aws_subnets" "default" {
 
 # 3. Security Group
 resource "aws_security_group" "sg_final" {
-  name        = "sgv2_${var.bucket_name}"
+  name_prefix = "sg-examen-"
   description = "Permitir gRPC, SSH y RedisInsight"
 
   ingress {
@@ -58,6 +58,10 @@ resource "aws_security_group" "sg_final" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  } # <-- LLAVE CERRADA CORRECTAMENTE AQUÍ
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -74,15 +78,15 @@ resource "aws_lb_target_group" "tg_examen" {
   name             = "tg-grpcv2-${substr(var.bucket_name, 0, 20)}"
   port             = 50051
   protocol         = "HTTP"
-  protocol_version = "GRPC" # CAMBIO CLAVE: Cambiado de HTTP1 a GRPC
+  protocol_version = "GRPC" 
   vpc_id           = data.aws_vpc.default.id
   
   health_check {
     enabled             = true
     port                = "50051"
     protocol            = "HTTP"
-    path                = "/" # En gRPC esto es ignorado pero requerido por AWS
-    matcher             = "12" # CAMBIO CLAVE: Código 12 significa 'Unimplemented' pero indica que el servicio responde
+    path                = "/" 
+    matcher             = "12" 
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
@@ -93,7 +97,7 @@ resource "aws_lb_target_group" "tg_examen" {
 resource "aws_lb_listener" "listener_grpc" {
   load_balancer_arn = aws_lb.alb_examen.arn
   port              = "50051"
-  protocol          = "HTTP" # El listener recibe HTTP/2 (gRPC) en este puerto
+  protocol          = "HTTP"
 
   default_action {
     type             = "forward"
@@ -111,7 +115,7 @@ resource "aws_launch_template" "template_examen" {
   tag_specifications {
     resource_type = "instance"
     tags = {
-      Name = "Instancia-gRPC-${var.bucket_name}" # El nombre que verás en la consola
+      Name     = "Instancia-gRPC-${var.bucket_name}"
       Proyecto = "Examen-Supletorio"
     }
   }
@@ -183,6 +187,13 @@ resource "aws_autoscaling_group" "asg_examen" {
   launch_template {
     id      = aws_launch_template.template_examen.id
     version = "$Latest"
+  }
+
+  # Propagar el nombre a las instancias para que se vea en la consola
+  tag {
+    key                 = "Name"
+    value               = "EC2-gRPC-${var.bucket_name}"
+    propagate_at_launch = true
   }
 
   depends_on = [
