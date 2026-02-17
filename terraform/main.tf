@@ -29,8 +29,8 @@ data "aws_subnets" "default" {
 
 # 3. Security Group
 resource "aws_security_group" "sg_final" {
-  # IMPORTANTE: No empezar con "sg-"
-  name_prefix = "examen-v2-${var.bucket_name}"
+  # Nombre corregido: No empieza con "sg-"
+  name_prefix = "final-v2-${var.bucket_name}"
   description = "Permitir gRPC, SSH y RedisInsight"
 
   ingress {
@@ -68,7 +68,8 @@ resource "aws_security_group" "sg_final" {
 
 # 4. Load Balancer (ALB) y Target Group
 resource "aws_lb" "alb_examen" {
-  name               = "alb-final-${substr(var.bucket_name, 0, 15)}"
+  # Nombre nuevo para evitar conflictos de recursos existentes
+  name               = "alb-f7-${substr(var.bucket_name, 0, 15)}"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.sg_final.id]
@@ -76,11 +77,11 @@ resource "aws_lb" "alb_examen" {
 }
 
 resource "aws_lb_target_group" "tg_examen" {
-  # Cambiamos nombre para evitar el error "already exists"
-  name             = "tg-grpc-v4-${substr(var.bucket_name, 0, 15)}"
+  name             = "tg-grpc-v7-${substr(var.bucket_name, 0, 15)}"
   port             = 50051
   protocol         = "HTTP"
-  protocol_version = "GRPC" # Mantiene gRPC pero sobre el listener HTTP
+  # CAMBIO CLAVE: HTTP2 permite gRPC sobre un Listener HTTP sin SSL
+  protocol_version = "HTTP2" 
   vpc_id           = data.aws_vpc.default.id
   
   health_check {
@@ -113,7 +114,7 @@ resource "aws_lb_listener" "listener_grpc" {
 
 # 5. Launch Template
 resource "aws_launch_template" "template_examen" {
-  name_prefix   = "temp-v4-${var.bucket_name}"
+  name_prefix   = "temp-v7-${var.bucket_name}"
   image_id      = "ami-0c7217cdde317cfec" 
   instance_type = "t2.micro"
   key_name      = var.ssh_key_name
