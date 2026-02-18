@@ -21,8 +21,8 @@ try {
     );
 
     const nuevoEstudiante = {
-        id: "1750001012", 
-        nombre: "Mauricio Correa",
+        id: "1714534820", 
+        nombre: "Lenin Rojas",
         carrera: "Ingenieria en Sistemas"
     };
 
@@ -30,11 +30,16 @@ try {
 
     client.EnviarEstudiante(nuevoEstudiante, (error, response) => {
         if (!error) {
+            console.log("\n==================================================");
+            console.log("             REPORTE DE PROCESAMIENTO             ");
+            console.log("==================================================");
+            console.log(` Transaccion:   OPERACION EXITOSA`);
+            console.log(` Estudiante:    ${nuevoEstudiante.nombre}`);
+            console.log(` Identificacion: ${nuevoEstudiante.id}`);
+            console.log(` Carrera:       ${nuevoEstudiante.carrera}`);
             console.log("--------------------------------------------------");
-            console.log("Respuesta del Servidor:");
-            console.log(response.mensaje);
-            console.log("Estado: Operacion completada satisfactoriamente.");
-            console.log("--------------------------------------------------");
+            console.log(` Detalle: ${response.mensaje}`);
+            console.log("==================================================\n");
         } else {
             console.error("Fallo en la comunicacion gRPC:", error.message);
             console.log("Referencia: Verifique la conectividad del ALB o la IP de la instancia.");

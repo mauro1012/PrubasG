@@ -24,9 +24,18 @@ Instalar dependencias del cliente
 cambiar las crednenciales en el .en de servidor con las credenciales de aws,
 y luego ejecutar el cliente y el servidor para que se conecten a redis y a s3
 
+cd /home/ubuntu/app
+sudo docker-compose down
+sudo docker-compose up -d --build
+
 ** verificacion final 
 dentro de la ec2 
-sudo docker exec redis-examen redis-cli keys "*"
+# Para ver el contenido detallado de una cédula específica:
+sudo docker exec redis-examen redis-cli GET "numeor de cedula"
+
+para ver todos los registros:
+
+sudo docker exec redis-examen redis-cli KEYS "*" | xargs -I {} sh -c 'echo "Clave: {}" && sudo docker exec redis-examen redis-cli GET "{}"'
 
 ** para ver la informadion del s3 
 intalar primero el cliente en la intiacia,
